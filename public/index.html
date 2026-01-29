@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LQR Racing Web</title>
+    <style>
+        body { margin: 0; background: #222; color: white; font-family: Arial; overflow: hidden; display: flex; flex-direction: column; align-items: center; }
+        canvas { background: #333; box-shadow: 0 0 20px rgba(0,0,0,0.5); cursor: none; }
+        #ui { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 15px; border-radius: 8px; pointer-events: none; }
+        #menu { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(40,40,40,0.95); padding: 30px; border-radius: 15px; text-align: center; border: 2px solid #555; }
+        button { background: #4CAF50; color: white; border: none; padding: 12px 24px; font-size: 18px; border-radius: 5px; cursor: pointer; margin-top: 20px; }
+        button:hover { background: #45a049; }
+        .param { margin: 10px 0; }
+        input { width: 60px; background: #444; color: white; border: 1px solid #666; padding: 5px; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <div id="menu">
+        <h1>LQR Racing Web</h1>
+        <div class="param">
+            Q (Precision): <input type="number" id="qInput" value="100" step="10">
+        </div>
+        <div class="param">
+            R (Comfort): <input type="number" id="rInput" value="1" step="0.5">
+        </div>
+        <p style="font-size: 0.9em; color: #aaa;">Use Left/Right Arrows to steer</p>
+        <button onclick="startGame()">Start Engine</button>
+    </div>
+
+    <div id="ui" style="display:none;">
+        <div id="stats">Speed: 0 km/h<br>Distance: 0.00 km</div>
+        <div id="lqrInfo" style="color: #ffeb3b; margin-top: 5px;"></div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const menu = document.getElementById('menu');
+        const ui = document.getElementById('ui');
+
+        canvas.width = 800;
+        canvas.height = 600;
+
+        let gameRunning = false;
+        let K = [1.0, 0.1];
+        let car = { x: 400, y: 500, theta: 0, steer: 0, targetSteer: 0, v: 5 };
+        let obstacles = [];
+        let distance = 0;
+        let score = 0;
+        let keys = {};
+
+        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keyup', e => keys[e.code] = false);
+
+        async function startGame() {
+            const q = document.getElementById('qInput').value;
+            const r = document.getElementById('rInput').value;
+            
+            menu.innerHTML = "Calculating LQR Gains...";
+            
+            try {
+                const response = await fetch('/api/solve_lqr', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ q: parseFloat(q), r: parseFloat(r) })
+                });
+                const data = await response.json();
+                K = data.K;
+                
+                document.getElementById('lqrInfo').innerText = `LQR K: [${K[0].toFixed(2)}, ${K[1].toFixed(2)}]`;
+                menu.style.display = 'none';
+                ui.style.display = 'block';
+                gameRunning = true;
+                resetGame();
+                requestAnimationFrame(gameLoop);
+            } catch (e) {
+                alert("API Error. Make sure you are running on Vercel or local server.");
+                menu.innerHTML = "Error. Try again.";
+            }
+        }
+
+        function resetGame() {
+            car = { x: 400, y: 500, theta: 0, steer: 0, targetSteer: 0, v: 6 };
+            obstacles = [];
+            distance = 0;
+            spawnObstacle();
+        }
+
+        function spawnObstacle() {
+            const types = ['normal', 'wide', 'moving'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            obstacles.push({
+                x: 200 + Math.random() * 400,
+                y: -50,
+                type: type,
+                w: type === 'wide' ? 100 : 40,
+                h: 40,
+                vx: type === 'moving' ? (Math.random() > 0.5 ? 2 : -2) : 0
+            });
+        }
+
+        function gameLoop() {
+            if (!gameRunning) return;
+
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function update() {
+            const dt = 1/60;
+            
+            // 1. Input
+            if (keys['ArrowLeft']) car.targetSteer = -0.6;
+            else if (keys['ArrowRight']) car.targetSteer = 0.6;
+            else car.targetSteer = 0;
+
+            // 2. LQR Control (Steer Actuator)
+            let error = car.steer - car.targetSteer;
+            let u = -(K[0] * error + K[1] * 0); // LQR Law
+            car.steer += u * dt;
+            car.steer = Math.max(-0.7, Math.min(0.7, car.steer));
+
+            // 3. Physics
+            car.v += 0.002;
+            car.theta += (car.v / 30) * Math.tan(car.steer);
+            car.x += car.v * Math.sin(car.theta);
+            distance += (car.v * 0.0001);
+
+            // 4. Obstacles
+            obstacles.forEach((obs, index) => {
+                obs.y += car.v * 0.8;
+                obs.x += obs.vx;
+                if (obs.x < 170 || obs.x > 630) obs.vx *= -1;
+
+                // Collision
+                if (Math.abs(obs.x - car.x) < (obs.w/2 + 15) && Math.abs(obs.y - car.y) < 40) {
+                    gameRunning = false;
+                    menu.style.display = 'block';
+                    menu.innerHTML = `<h1>GAME OVER</h1><p>Distance: ${distance.toFixed(2)} KM</p><button onclick="location.reload()">Try Again</button>`;
+                }
+            });
+
+            obstacles = obstacles.filter(o => o.y < 700);
+            if (obstacles.length < 3 && Math.random() < 0.02) spawnObstacle();
+
+            if (car.x < 150 || car.x > 650) {
+                gameRunning = false;
+                menu.style.display = 'block';
+                menu.innerHTML = `<h1>CRASHED!</h1><p>Stay on the road.</p><button onclick="location.reload()">Try Again</button>`;
+            }
+
+            document.getElementById('stats').innerHTML = `Speed: ${(car.v * 15).toFixed(1)} km/h<br>Distance: ${distance.toFixed(2)} km`;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Road
+            ctx.fillStyle = '#444';
+            ctx.fillRect(150, 0, 500, canvas.height);
+            ctx.strokeStyle = 'white';
+            ctx.setLineDash([20, 20]);
+            ctx.beginPath();
+            ctx.moveTo(400, 0); ctx.lineTo(400, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Obstacles
+            obstacles.forEach(obs => {
+                ctx.fillStyle = obs.type === 'wide' ? '#ff9800' : (obs.type === 'moving' ? '#9c27b0' : '#f44336');
+                ctx.fillRect(obs.x - obs.w/2, obs.y - obs.h/2, obs.w, obs.h);
+            });
+
+            // Car
+            ctx.save();
+            ctx.translate(car.x, car.y);
+            ctx.rotate(car.theta);
+            ctx.fillStyle = '#2196f3';
+            ctx.fillRect(-20, -35, 40, 70);
+            
+            // Wheels / Indicator
+            ctx.fillStyle = 'yellow';
+            ctx.beginPath();
+            ctx.moveTo(0, -20);
+            ctx.lineTo(Math.sin(car.steer*2)*30, -20 - Math.cos(car.steer*2)*30);
+            ctx.stroke();
+            ctx.restore();
+        }
+    </script>
+</body>
+</html>
