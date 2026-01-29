@@ -84,61 +84,52 @@
         }
 
         function resetGame() {
-            car = { x: 400, y: 500, theta: 0, steer: 0, targetSteer: 0, v: 6 };
+            car = { x: 400, y: 500, theta: 0, steer: 0, targetSteer: 0, v: 4 }; // 降低初始速度
             obstacles = [];
             distance = 0;
-            spawnObstacle();
+            lastTime = performance.now();
+            // 延迟第一次生成，给玩家准备时间
+            setTimeout(spawnObstacle, 1000);
         }
 
-        function spawnObstacle() {
-            const types = ['normal', 'wide', 'moving'];
-            const type = types[Math.floor(Math.random() * types.length)];
-            obstacles.push({
-                x: 200 + Math.random() * 400,
-                y: -50,
-                type: type,
-                w: type === 'wide' ? 100 : 40,
-                h: 40,
-                vx: type === 'moving' ? (Math.random() > 0.5 ? 2 : -2) : 0
-            });
-        }
-
-        function gameLoop() {
+        let lastTime = 0;
+        function gameLoop(timestamp) {
             if (!gameRunning) return;
 
-            update();
+            const dt = (timestamp - lastTime) / 1000;
+            lastTime = timestamp;
+
+            update(dt > 0.1 ? 0.016 : dt); // 防止标签页切换导致的巨大跳跃
             draw();
             requestAnimationFrame(gameLoop);
         }
 
-        function update() {
-            const dt = 1/60;
-            
+        function update(dt) {
             // 1. Input
-            if (keys['ArrowLeft']) car.targetSteer = -0.6;
-            else if (keys['ArrowRight']) car.targetSteer = 0.6;
+            if (keys['ArrowLeft']) car.targetSteer = -0.5;
+            else if (keys['ArrowRight']) car.targetSteer = 0.5;
             else car.targetSteer = 0;
 
-            // 2. LQR Control (Steer Actuator)
+            // 2. LQR Control
             let error = car.steer - car.targetSteer;
-            let u = -(K[0] * error + K[1] * 0); // LQR Law
+            let u = -(K[0] * error + K[1] * 0);
             car.steer += u * dt;
-            car.steer = Math.max(-0.7, Math.min(0.7, car.steer));
+            car.steer = Math.max(-0.6, Math.min(0.6, car.steer));
 
             // 3. Physics
-            car.v += 0.002;
-            car.theta += (car.v / 30) * Math.tan(car.steer);
-            car.x += car.v * Math.sin(car.theta);
-            distance += (car.v * 0.0001);
+            car.v += 0.05 * dt; // 大幅减慢速度增长
+            car.theta += (car.v / 2.5) * Math.tan(car.steer) * dt;
+            car.x += car.v * Math.sin(car.theta) * 60 * dt; // 像素缩放
+            distance += (car.v * 0.01 * dt);
 
             // 4. Obstacles
             obstacles.forEach((obs, index) => {
-                obs.y += car.v * 0.8;
-                obs.x += obs.vx;
+                obs.y += car.v * 40 * dt; // 减慢下落感
+                obs.x += obs.vx * 30 * dt;
                 if (obs.x < 170 || obs.x > 630) obs.vx *= -1;
 
-                // Collision
-                if (Math.abs(obs.x - car.x) < (obs.w/2 + 15) && Math.abs(obs.y - car.y) < 40) {
+                // 优化碰撞检测 (缩小判定范围)
+                if (Math.abs(obs.x - car.x) < (obs.w/2 + 10) && Math.abs(obs.y - car.y) < 30) {
                     gameRunning = false;
                     menu.style.display = 'block';
                     menu.innerHTML = `<h1>GAME OVER</h1><p>Distance: ${distance.toFixed(2)} KM</p><button onclick="location.reload()">Try Again</button>`;
@@ -146,7 +137,8 @@
             });
 
             obstacles = obstacles.filter(o => o.y < 700);
-            if (obstacles.length < 3 && Math.random() < 0.02) spawnObstacle();
+            // 降低生成频率
+            if (obstacles.length < 3 && Math.random() < 0.01) spawnObstacle();
 
             if (car.x < 150 || car.x > 650) {
                 gameRunning = false;
@@ -154,7 +146,7 @@
                 menu.innerHTML = `<h1>CRASHED!</h1><p>Stay on the road.</p><button onclick="location.reload()">Try Again</button>`;
             }
 
-            document.getElementById('stats').innerHTML = `Speed: ${(car.v * 15).toFixed(1)} km/h<br>Distance: ${distance.toFixed(2)} km`;
+            document.getElementById('stats').innerHTML = `Speed: ${(car.v * 10).toFixed(1)} km/h<br>Distance: ${distance.toFixed(2)} km`;
         }
 
         function draw() {
