@@ -25,7 +25,9 @@ pip install pygame numpy scipy
 python3 lqr_racing.py
 ```
 #### 2. Web Version (Vercel)
-The project is ready for Vercel deployment. It uses a Python Serverless function (`api/solve_lqr.py`) for math and HTML5 Canvas for rendering.
+The project is deployed on Vercel: [https://lqr-model-simulator.vercel.app/](https://lqr-model-simulator.vercel.app/)
+
+It uses a Python Serverless function (`api/solve_lqr.py`) for math and HTML5 Canvas for rendering.
 
 ### ⌨️ Controls
 *   **Menu**: Use Arrow Keys to adjust Q/R, Space to Start.
@@ -59,7 +61,9 @@ pip install pygame numpy scipy
 python3 lqr_racing.py
 ```
 #### 2. 网页版 (Vercel)
-项目已适配 Vercel 部署。使用 Python 云函数 (`api/solve_lqr.py`) 进行数学计算，使用 HTML5 Canvas 进行画面渲染。
+项目已部署在 Vercel：[https://lqr-model-simulator.vercel.app/](https://lqr-model-simulator.vercel.app/)
+
+项目使用 Python 云函数 (`api/solve_lqr.py`) 进行数学计算，使用 HTML5 Canvas 进行画面渲染。
 
 ### ⌨️ 操作指南
 *   **菜单界面**：使用方向键调整 Q/R，空格键开始游戏。
