@@ -1,66 +1,61 @@
-<<<<<<< HEAD
-# LQR 赛车控制与手感模拟器 (LQR Racing Simulator)
+# LQR Racing Simulator
 
-这是一个基于 Python 和 Pygame 开发的赛车游戏原型，旨在直观展示 **LQR (线性二次型调节器)** 控制算法在车辆转向执行系统中的应用。通过实时调整控制参数，你可以亲身体验不同的驾驶风格（从极度运动到极致舒适）对避障性能的影响。
+A Python and Pygame-based racing game prototype designed to intuitively demonstrate the application of the **LQR (Linear Quadratic Regulator)** control algorithm in vehicle steering actuation systems. By adjusting control parameters in real-time, you can experience how different driving styles—from aggressive sport to ultra-smooth comfort—affect obstacle avoidance performance.
 
-## 🚀 核心特性
+## 🚀 Key Features
 
-*   **LQR 实时调参**：在游戏开始前自由调整 $Q$ (精度) 和 $R$ (舒适度) 参数。
-*   **手动驾驶模式**：玩家通过键盘输入目标转向，LQR 算法作为执行层负责平滑或精确地驱动车轮。
-*   **动态难度系统**：
-    *   **无限加速**：随着行驶距离增加，车速不断提升，考验控制系统的稳定性。
-    *   **多样化障碍**：包括普通障碍、宽幅障碍以及横向移动障碍。
-*   **数据统计与持久化**：
-    *   实时里程计数 (KM)。
-    *   自动保存历史最高纪录至本地 `highscore.txt`。
+*   **Real-time LQR Tuning**: Freely adjust $Q$ (Precision) and $R$ (Comfort) parameters before starting the game.
+*   **Manual Driving Mode**: You control the target steering input via keyboard, while the LQR algorithm acts as the execution layer to drive the wheels precisely or smoothly.
+*   **Dynamic Difficulty System**:
+    *   **Continuous Acceleration**: Vehicle speed increases over time, testing the stability of your control tuning at high speeds.
+    *   **Diverse Obstacles**: Includes standard obstacles, wide barriers, and horizontally moving challenges.
+*   **Stats & Persistence**:
+    *   Real-time mileage tracking (KM).
+    *   Persistent High Score saved automatically to `highscore.txt`.
 
-## 🛠️ 安装要求
+## 🛠️ Requirements
 
-确保你的系统中已安装 Python 3.x，并安装以下依赖库：
+Ensure you have Python 3.x installed, then install the dependencies:
 
 ```bash
 pip install pygame numpy scipy
 ```
 
-## 🎮 运行游戏
+## 🎮 How to Run
 
-在终端中执行：
+Execute the following command in your terminal:
 
 ```bash
 python3 lqr_racing.py
 ```
 
-## ⌨️ 操作指南
+## ⌨️ Controls
 
-### 菜单界面 (参数设置)
-*   **UP / DOWN 方向键**：调整 **Q** (State Cost)。数值越大，转向越精准、越激进。
-*   **LEFT / RIGHT 方向键**：调整 **R** (Control Cost)。数值越大，转向越平滑、越柔顺。
-*   **SPACE (空格)**：确认参数并启动引擎。
+### Menu Screen (Configuration)
+*   **UP / DOWN Arrows**: Adjust **Q** (State Cost). Higher values make steering more precise and aggressive.
+*   **LEFT / RIGHT Arrows**: Adjust **R** (Control Cost). Higher values make steering smoother and more filtered.
+*   **SPACE**: Confirm parameters and start the engine.
 
-### 游戏界面 (驾驶)
-*   **LEFT / RIGHT 方向键**：控制赛车转向。
-*   **黄色指示线**：代表实际车轮转角。
-*   **目标**：躲避红色、橙色和紫色障碍物，尽量行驶更远的距离。
+### Game Screen (Driving)
+*   **LEFT / RIGHT Arrows**: Control the vehicle's steering.
+*   **Yellow Indicator Line**: Represents the actual wheel steering angle.
+*   **Goal**: Avoid Red, Orange, and Purple obstacles and travel as far as possible.
 
-## 🧠 LQR 参数直观解释
+## 🧠 Intuitive LQR Explanation
 
-本项目将 LQR 应用于转向执行器。状态向量为误差角度，控制输入为转向速度。
+This project applies LQR to the steering actuator. The state vector is the angular error, and the control input is the steering velocity.
 
-| 参数 | 物理意义 | 驾驶感受 (High Value) |
+| Parameter | Physical Meaning | Driving Feel (High Value) |
 | :--- | :--- | :--- |
-| **Q (Precision)** | 对角度偏差的惩罚 | **运动模式**：转向反应极快，指哪打哪，几乎没有延迟，但在高速下可能显得过于神经质。 |
-| **R (Comfort)** | 对转向动作幅度的惩罚 | **舒适模式**：转向极其丝滑，过滤掉剧烈的动作。但在高速避障时会有明显的延迟感（“推头”感）。 |
+| **Q (Precision)** | Penalty on angular error | **Sport Mode**: Extremely fast steering response with zero perceived lag, but can feel "twitchy" at high speeds. |
+| **R (Comfort)** | Penalty on control effort | **Comfort Mode**: Silky smooth steering transitions that filter out jerky movements. However, may lead to "understeer" feel during rapid obstacle avoidance. |
 
-## 📁 文件结构
+## 📁 File Structure
 
-*   `lqr_racing.py`: 游戏主程序。
-*   `highscore.txt`: 自动生成的最高纪录存储文件。
-*   `lqr_lateral_control.py`: (原始脚本) 用于生成 Matlab 风格对比图的数学原型。
+*   `lqr_racing.py`: The main game application.
+*   `highscore.txt`: Automatically generated file for high score persistence.
+*   `lqr_lateral_control.py`: (Legacy) Original script for generating Matlab-style comparison plots.
 
-## 📝 许可证
+## 📝 License
 
-本项目仅用于教育与算法演示目的。
-=======
-# LQR-Model-Simulator
-这是一个基于 Python 和 Pygame 开发的赛车游戏原型，旨在直观展示 **LQR (线性二次型调节器)** 控制算法在车辆转向执行系统中的应用。通过实时调整控制参数，你可以亲身体验不同的驾驶风格（从极度运动到极致舒适）对避障性能的影响。
->>>>>>> 41c236e9ac56445c15e77ac3a98cf82ab5afc004
+This project is for educational and algorithmic demonstration purposes only.
