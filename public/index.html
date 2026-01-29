@@ -87,7 +87,7 @@
         }
 
         function resetGame() {
-            car = { x: 400, y: 500, theta: 0, steer: 0, targetSteer: 0, v: 4 };
+            car = { x: 400, y: 500, theta: 0, steer: 0, targetSteer: 0, v: 6 };
             obstacles = [];
             distance = 0;
             setTimeout(spawnObstacle, 1000);
@@ -133,10 +133,10 @@
             car.steer = Math.max(-0.6, Math.min(0.6, car.steer));
 
             // 3. Physics
-            car.v += 0.05 * dt;
+            car.v += 0.12 * dt;
             car.theta += (car.v / 2.5) * Math.tan(car.steer) * dt;
-            car.x += car.v * Math.sin(car.theta) * 60 * dt; 
-            distance += (car.v * 0.01 * dt);
+            car.x += car.v * Math.sin(car.theta) * 65 * dt; 
+            distance += (car.v * 0.015 * dt);
 
             // 4. Obstacles
             obstacles.forEach((obs) => {
