@@ -47,10 +47,10 @@
 
         let gameRunning = false;
         let K = [1.0, 0.1];
-        let car = { x: 400, y: 500, theta: 0, steer: 0, targetSteer: 0, v: 5 };
+        let car = { x: 400, y: 500, theta: 0, steer: 0, targetSteer: 0, v: 4 };
         let obstacles = [];
         let distance = 0;
-        let score = 0;
+        let lastTime = 0;
         let keys = {};
 
         window.addEventListener('keydown', e => keys[e.code] = true);
@@ -74,32 +74,48 @@
                 document.getElementById('lqrInfo').innerText = `LQR K: [${K[0].toFixed(2)}, ${K[1].toFixed(2)}]`;
                 menu.style.display = 'none';
                 ui.style.display = 'block';
-                gameRunning = true;
+                
                 resetGame();
+                gameRunning = true;
+                lastTime = 0; // 重置时间基准
                 requestAnimationFrame(gameLoop);
             } catch (e) {
-                alert("API Error. Make sure you are running on Vercel or local server.");
-                menu.innerHTML = "Error. Try again.";
+                console.error(e);
+                alert("API Error. Please check your Vercel logs.");
+                menu.innerHTML = `<h1>Connection Error</h1><button onclick="location.reload()">Retry</button>`;
             }
         }
 
         function resetGame() {
-            car = { x: 400, y: 500, theta: 0, steer: 0, targetSteer: 0, v: 4 }; // 降低初始速度
+            car = { x: 400, y: 500, theta: 0, steer: 0, targetSteer: 0, v: 4 };
             obstacles = [];
             distance = 0;
-            lastTime = performance.now();
-            // 延迟第一次生成，给玩家准备时间
             setTimeout(spawnObstacle, 1000);
         }
 
-        let lastTime = 0;
+        function spawnObstacle() {
+            if (!gameRunning) return;
+            const types = ['normal', 'wide', 'moving'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            obstacles.push({
+                x: 200 + Math.random() * 400,
+                y: -50,
+                type: type,
+                w: type === 'wide' ? 100 : 40,
+                h: 40,
+                vx: type === 'moving' ? (Math.random() > 0.5 ? 2 : -2) : 0
+            });
+        }
+
         function gameLoop(timestamp) {
             if (!gameRunning) return;
 
+            if (!lastTime) lastTime = timestamp;
             const dt = (timestamp - lastTime) / 1000;
             lastTime = timestamp;
 
-            update(dt > 0.1 ? 0.016 : dt); // 防止标签页切换导致的巨大跳跃
+            // 限制 dt 范围，防止因切屏导致的物理跳变
+            update(Math.min(dt, 0.05));
             draw();
             requestAnimationFrame(gameLoop);
         }
@@ -117,36 +133,38 @@
             car.steer = Math.max(-0.6, Math.min(0.6, car.steer));
 
             // 3. Physics
-            car.v += 0.05 * dt; // 大幅减慢速度增长
+            car.v += 0.05 * dt;
             car.theta += (car.v / 2.5) * Math.tan(car.steer) * dt;
-            car.x += car.v * Math.sin(car.theta) * 60 * dt; // 像素缩放
+            car.x += car.v * Math.sin(car.theta) * 60 * dt; 
             distance += (car.v * 0.01 * dt);
 
             // 4. Obstacles
-            obstacles.forEach((obs, index) => {
-                obs.y += car.v * 40 * dt; // 减慢下落感
+            obstacles.forEach((obs) => {
+                obs.y += car.v * 40 * dt;
                 obs.x += obs.vx * 30 * dt;
                 if (obs.x < 170 || obs.x > 630) obs.vx *= -1;
 
-                // 优化碰撞检测 (缩小判定范围)
-                if (Math.abs(obs.x - car.x) < (obs.w/2 + 10) && Math.abs(obs.y - car.y) < 30) {
-                    gameRunning = false;
-                    menu.style.display = 'block';
-                    menu.innerHTML = `<h1>GAME OVER</h1><p>Distance: ${distance.toFixed(2)} KM</p><button onclick="location.reload()">Try Again</button>`;
+                // Collision Detection
+                if (Math.abs(obs.x - car.x) < (obs.w/2 + 12) && Math.abs(obs.y - car.y) < 30) {
+                    endGame(`<h1>GAME OVER</h1><p>Distance: ${distance.toFixed(2)} KM</p>`);
                 }
             });
 
             obstacles = obstacles.filter(o => o.y < 700);
-            // 降低生成频率
-            if (obstacles.length < 3 && Math.random() < 0.01) spawnObstacle();
+            if (obstacles.length < 3 && Math.random() < 0.02) spawnObstacle();
 
+            // Wall Collision
             if (car.x < 150 || car.x > 650) {
-                gameRunning = false;
-                menu.style.display = 'block';
-                menu.innerHTML = `<h1>CRASHED!</h1><p>Stay on the road.</p><button onclick="location.reload()">Try Again</button>`;
+                endGame(`<h1>CRASHED!</h1><p>Distance: ${distance.toFixed(2)} KM</p>`);
             }
 
             document.getElementById('stats').innerHTML = `Speed: ${(car.v * 10).toFixed(1)} km/h<br>Distance: ${distance.toFixed(2)} km`;
+        }
+
+        function endGame(msg) {
+            gameRunning = false;
+            menu.style.display = 'block';
+            menu.innerHTML = `${msg}<button onclick="location.reload()">Restart</button>`;
         }
 
         function draw() {
@@ -155,7 +173,8 @@
             // Road
             ctx.fillStyle = '#444';
             ctx.fillRect(150, 0, 500, canvas.height);
-            ctx.strokeStyle = 'white';
+            
+            ctx.strokeStyle = '#666';
             ctx.setLineDash([20, 20]);
             ctx.beginPath();
             ctx.moveTo(400, 0); ctx.lineTo(400, canvas.height);
@@ -175,11 +194,12 @@
             ctx.fillStyle = '#2196f3';
             ctx.fillRect(-20, -35, 40, 70);
             
-            // Wheels / Indicator
-            ctx.fillStyle = 'yellow';
+            // Steering indicator
+            ctx.strokeStyle = 'yellow';
+            ctx.lineWidth = 3;
             ctx.beginPath();
             ctx.moveTo(0, -20);
-            ctx.lineTo(Math.sin(car.steer*2)*30, -20 - Math.cos(car.steer*2)*30);
+            ctx.lineTo(Math.sin(car.steer*2)*25, -20 - Math.cos(car.steer*2)*25);
             ctx.stroke();
             ctx.restore();
         }
